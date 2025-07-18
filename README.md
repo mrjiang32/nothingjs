@@ -21,6 +21,8 @@ The `nothing` module provides a consistent way to work with default empty values
 import nothing from "./nothing.js";
 ```
 
+* You need to install `typec` first. [https://github.com/mrjiang32/typec/]
+
 ## API Reference
 
 ### Core Functions
@@ -132,6 +134,16 @@ nothing.normalize(null);      // null
 nothing.normalize(undefined); // null
 nothing.normalize(NaN);       // null
 nothing.normalize("hello");   // "hello"
+```
+
+### `fallback(value, default_value)`
+A simple fallback to process the value.
+
+```javascript
+let x = undefined;
+
+x = nothing.fallback(x, "1"); // "1"
+x = nothing.fallback(x, 1); // 1
 ```
 
 #### `do_nothing()`
