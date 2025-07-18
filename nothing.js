@@ -318,6 +318,20 @@ const normalize = (value) => {
 }
 
 /**
+ * A simple fallback to process the value.
+ * @param {*} value - The value to check
+ * @param {*} fallback_value - The fallback value to return if the input value is null
+ * @returns {*} The original value if it's not null, otherwise the fallback value
+ */
+const fallback = (value, fallback_value) => {
+    if (typec.is_null(value)) {
+        return fallback_value;
+    }
+    return value;
+}
+
+
+/**
  * A function that does nothing and returns undefined
  * @type {Function}
  * @returns {undefined} Always returns undefined
@@ -341,7 +355,7 @@ const object = by_type("object");
  * Nothing utility module
  * It's small yet powerful, providing default values and utility functions
  * @namespace nothing
- * @version 1.0.4
+ * @version 1.0.5
  * @author Andrew M. Pines
  * @copyright 2025 Andrew M. Pines
  */
@@ -360,6 +374,8 @@ export default Object.freeze({
     purification,
     /** @type {Function} Normalize the nulls */
     normalize,
+    /** @type {Function} Fallback to a value if the input is null */
+    fallback,
     /** @type {Function} Shallow merge objects */
     shallow_merge,
     /** @type {Function} Deep merge objects recursively */
