@@ -202,7 +202,7 @@ const purification = (source, deep = -1) => {
  * const source2 = { nested: { y: 2 } };
  * shallow_merge(target2, source2); // { nested: { y: 2 } } - overwrites nested object
  */
-const shallow_merge = (target, source) => {
+const shallow_merge2 = (target, source) => {
     if (!(typec.type_check(target, "object") && typec.type_check(source, "object"))) {
         throw new TypeError("Both target and source must be objects.");
     }
@@ -211,6 +211,39 @@ const shallow_merge = (target, source) => {
         if (Object.prototype.hasOwnProperty.call(source, key)) {
             target[key] = source[key]; // Shallow copy properties from source to target
         }
+    }
+
+    return target; // Return the modified target object
+}
+
+/**
+ * Performs shallow merge of multiple source objects into target object
+ * @param {Object} target - The target object to merge into (will be modified)
+ * @param {...Object} sources - One or more source objects to merge from
+ * @returns {Object} The modified target object
+ * @throws {TypeError} When target or any source is not an object
+ * @example
+ * const target = { a: 1 };
+ * const source1 = { b: 2, c: 3 };
+ * const source2 = { c: 4, d: 5 };
+ * shallow_mergen(target, source1, source2);
+ * // Result: { a: 1, b: 2, c: 4, d: 5 }
+ * 
+ * // Multiple sources are merged in order (later sources override earlier ones)
+ * const config = { debug: false, port: 3000 };
+ * shallow_mergen(config, { port: 8080 }, { debug: true });
+ * // Result: { debug: true, port: 8080 }
+ */
+const shallow_mergen = (target, ...sources) => {
+    if (!typec.type_check(target, "object")) {
+        throw new TypeError("Target must be an object.");
+    }
+
+    for (const source of sources) {
+        if (!typec.type_check(source, "object")) {
+            throw new TypeError("Source must be an object.");
+        }
+        target = shallow_merge2(target, source);
     }
 
     return target; // Return the modified target object
@@ -237,7 +270,7 @@ const shallow_merge = (target, source) => {
  * const source3 = { nested: { a: 1 } };
  * deep_merge(target3, source3); // { nested: { a: 1 } }
  */
-const deep_merge = (target, source, deep = -1) => {
+const deep_merge2 = (target, source, deep = -1) => {
     if (deep <= 0 && deep !== -1) {
         return target; // Stop recursion if depth limit reached
     }
@@ -250,12 +283,46 @@ const deep_merge = (target, source, deep = -1) => {
         if (Object.prototype.hasOwnProperty.call(source, key)) {
             if (typec.type_check(source[key], "object") && !Array.isArray(source[key])) {
                 // If the property is an object, recursively merge
-                target[key] = deep_merge(target[key] || {}, source[key], deep === -1 ? -1 : deep - 1);
+                target[key] = deep_merge2(target[key] || {}, source[key], deep === -1 ? -1 : deep - 1);
             } else {
                 // Otherwise, just assign the value
                 target[key] = source[key];
             }
         }
+    }
+
+    return target; // Return the modified target object
+}
+
+/**
+ * Performs deep merge of multiple source objects into target object
+ * @param {Object} target - The target object to merge into (will be modified)
+ * @param {...Object} sources - One or more source objects to merge from
+ * @returns {Object} The modified target object
+ * @throws {TypeError} When target or any source is not an object
+ * @example
+ * const target = { a: 1, nested: { x: 1, y: 2 } };
+ * const source1 = { b: 2, nested: { y: 3, z: 4 } };
+ * const source2 = { c: 3, nested: { w: 5 } };
+ * deep_mergen(target, source1, source2);
+ * // Result: { a: 1, b: 2, c: 3, nested: { x: 1, y: 3, z: 4, w: 5 } }
+ * 
+ * // Deep merging preserves nested structure while overriding values
+ * const defaults = { api: { timeout: 5000, retries: 3 }, debug: false };
+ * const userConfig = { api: { timeout: 10000 }, features: { logging: true } };
+ * deep_mergen(defaults, userConfig);
+ * // Result: { api: { timeout: 10000, retries: 3 }, debug: false, features: { logging: true } }
+ */
+const deep_mergen = (target, ...sources) => {
+    if (!typec.type_check(target, "object")) {
+        throw new TypeError("Target must be an object.");
+    }
+
+    for (const source of sources) {
+        if (!typec.type_check(source, "object")) {
+            throw new TypeError("Source must be an object.");
+        }
+        target = deep_merge2(target, source);
     }
 
     return target; // Return the modified target object
@@ -318,10 +385,22 @@ const normalize = (value) => {
 }
 
 /**
- * A simple fallback to process the value.
+ * A simple fallback to process the value
+ * Returns the fallback value if input is null/undefined/NaN, otherwise returns the input
  * @param {*} value - The value to check
  * @param {*} fallback_value - The fallback value to return if the input value is null
- * @returns {*} The original value if it's not null, otherwise the fallback value
+ * @returns {*} The original value if it's not null/undefined/NaN, otherwise the fallback value
+ * @example
+ * fallback(null, "default");       // "default"
+ * fallback(undefined, "default");  // "default"
+ * fallback(NaN, "default");        // "default"
+ * fallback("hello", "default");    // "hello"
+ * fallback(0, "default");          // 0 (zero is not null)
+ * fallback(false, "default");      // false (false is not null)
+ * 
+ * // Useful for API responses
+ * const userName = fallback(response.data.name, "Anonymous");
+ * const userAge = fallback(response.data.age, 18);
  */
 const fallback = (value, fallback_value) => {
     if (typec.is_null(value)) {
@@ -330,6 +409,49 @@ const fallback = (value, fallback_value) => {
     return value;
 }
 
+/**
+ * Checks if the value is empty (null, undefined, empty string, empty array, or
+ * empty object).
+ * @param {*} value - The value to check
+ * @returns {boolean} True if the value is empty, false otherwise
+ * @example
+ * is_empty(null);        // true
+ * is_empty(undefined);   // true
+ * is_empty("");          // true
+ * is_empty([]);         // true
+ * is_empty({});         // true
+ * is_empty("hello");    // false
+ * is_empty([1, 2]);     // false
+ * is_empty({ a: 1 });   // false
+ * is_empty(0);          // false (0 is not considered empty)
+ */
+const is_empty = (value) => {
+    if (typec.is_null(value)) {
+        return true; // null is considered empty
+    }
+
+    if (Array.isArray(value)) {
+        return value.length === 0; // empty array is considered empty
+    }
+
+    if (typec.type_check(value, "object")) {
+        return Object.keys(value).length === 0; // empty object is considered empty
+    }
+
+    if (typeof value === "string") {
+        return value.trim() === ""; // empty string is considered empty
+    }
+
+    if (typeof value === "number") {
+        return !Number.isFinite(value); // NaN is considered empty
+    }
+
+    if (typeof value === "boolean") {
+        return false; // boolean values are not considered empty
+    }
+
+    return false; // other types (functions, symbols, etc.) are not considered empty
+}
 
 /**
  * A function that does nothing and returns undefined
@@ -354,10 +476,12 @@ const object = by_type("object");
 /**
  * Nothing utility module
  * It's small yet powerful, providing default values and utility functions
+ * @description Provides default "nothing" values for various JavaScript types,
+ * and utility functions for type checking, merging, and normalization.
  * @namespace nothing
  * @version 1.0.5
  * @author Andrew M. Pines
- * @copyright 2025 Andrew M. Pines
+ * @license MIT
  */
 export default Object.freeze({
     /** @type {Function} Get default value by type name */
@@ -376,12 +500,18 @@ export default Object.freeze({
     normalize,
     /** @type {Function} Fallback to a value if the input is null */
     fallback,
-    /** @type {Function} Shallow merge objects */
-    shallow_merge,
-    /** @type {Function} Deep merge objects recursively */
-    deep_merge,
+    /** @type {Function} Shallow merge two objects */
+    shallow_merge2,
+    /** @type {Function} Deep merge two objects */
+    deep_merge2,
+    /** @type {Function} Shallow merge multiple objects */
+    shallow_merge: shallow_mergen,
+    /** @type {Function} Deep merge multiple objects */
+    deep_merge: deep_mergen,
     /** @type {Function} Remove default values from object */
     cut_default,
+    /** @type {Function} Check if value is empty (null, undefined, empty string, empty array, or empty object) */
+    is_empty,
     /** @type {Function} Function that does nothing */
     do_nothing,
     /** @type {Object} Default empty object */
